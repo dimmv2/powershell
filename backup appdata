@@ -1,16 +1,13 @@
-
-# fixed double folder is copined in source
-# fixed space : last checkbox is not seen 
-# Added: zip folder +  auto delete of backupped folder 
-# Added: Directly zip folder , without copy that.
-
+# fixed double folder is copied in source
+# fixed space: last checkbox is not seen
+# Added: zip folder + auto delete of backed-up folder
 
 Add-Type -AssemblyName System.Windows.Forms
 
 # Create a form
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Folder Selection"
-$Form.Size = New-Object System.Drawing.Size(400, 600)
+$Form.Size = New-Object System.Drawing.Size(400, 650)
 $Form.StartPosition = "CenterScreen"
 $Form.BackColor = [System.Drawing.Color]::LightGray  # Set form background color to gray
 
@@ -24,7 +21,12 @@ $FlowLayoutPanel.FlowDirection = [System.Windows.Forms.FlowDirection]::TopDown
 $FlowLayoutPanel.WrapContents = $false
 $FlowLayoutPanel.AutoScroll = $true
 $FlowLayoutPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
-$FlowLayoutPanel.Padding = New-Object System.Windows.Forms.Padding(0, 16, 0, 0) #  dimm fix  ==> Left  , Top ,Right ,Bottom 
+$FlowLayoutPanel.Padding = New-Object System.Windows.Forms.Padding(0, 16, 0, 0) #  dimm fix  ==> Left,Top,Right,Bottom 
+
+
+
+
+
 
 # Create a search box
 $SearchBox = New-Object System.Windows.Forms.TextBox
@@ -33,7 +35,7 @@ $SearchBox.Height = 30  # Increase the height of the search box
 $SearchBox.Add_TextChanged({
     $searchText = $SearchBox.Text.ToLower().Trim()
     $FlowLayoutPanel.Controls.Clear()  # Clear existing checkboxes
-    
+
     foreach ($Folder in $Folders) {
         if ($Folder.Name.ToLower().Contains($searchText)) {
             $CheckBox = New-Object System.Windows.Forms.CheckBox
@@ -47,6 +49,8 @@ $SearchBox.Add_TextChanged({
             $FlowLayoutPanel.Controls.Add($CheckBox)
         }
     }
+        # Add an empty label to ensure the last checkbox is always visible
+        $FlowLayoutPanel.Controls.Add($EmptyLabel)
 })
 
 # Function to load folders
@@ -72,9 +76,17 @@ foreach ($Folder in $Folders) {
     $FlowLayoutPanel.Controls.Add($CheckBox)
 }
 
+# Create an empty label
+$EmptyLabel = New-Object System.Windows.Forms.Label
+$EmptyLabel.Text = " "
+$EmptyLabel.AutoSize = $true
+$EmptyLabel.Padding =  New-Object System.Windows.Forms.Padding(0, 50, 0, 0) #dimm space push from down  to up !!! fix for last item
+# Add the empty label to the flow layout panel
+$FlowLayoutPanel.Controls.Add($EmptyLabel)
+
 # Add the search box to the panel
 $Panel.Controls.Add($SearchBox)
-$SearchBox.Padding = New-Object System.Windows.Forms.Padding(10, 10, 10, 5)  # Adjust bottom padding
+$SearchBox.Padding = New-Object System.Windows.Forms.Padding(10, 10, 10, 50)  # Adjust bottom padding
 # Add the flow layout panel to the panel
 $Panel.Controls.Add($FlowLayoutPanel)
 
@@ -83,12 +95,15 @@ $SelectAllButton = New-Object System.Windows.Forms.Button
 $SelectAllButton.Text = "Select All"
 $SelectAllButton.BackColor = [System.Drawing.Color]::LightBlue  # Set button background color to light blue
 $SelectAllButton.Dock = [System.Windows.Forms.DockStyle]::Bottom
+$SelectAllButton.Padding =  New-Object System.Windows.Forms.Padding(0, 0, 0, 0) #dimm space
 
 # Event handler for Select All button click
 $SelectAllButton.Add_Click({
     $isChecked = $FlowLayoutPanel.Controls | ForEach-Object { $_.Checked }
     $newState = -not ($isChecked -contains $true)
-    $FlowLayoutPanel.Controls | ForEach-Object { $_.Checked = $newState }
+    $FlowLayoutPanel.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] } | ForEach-Object { $_.Checked = $newState }
+
+    
     $SelectAllButton.Text = if ($newState) { "Deselect All" } else { "Select All" }
 })
 
@@ -108,14 +123,10 @@ $BackupButton.Add_Click({
         }
         foreach ($Folder in $SelectedFolders) {
             $SourcePath = [System.IO.Path]::Combine([Environment]::GetFolderPath("ApplicationData"), $Folder)
-            # $DestinationFolder = Join-Path -Path $DestinationPath -ChildPath .
-            # Copy-Item -Path $SourcePath -Destination $DestinationFolder -Recurse -Force
-            $ZipPath = Join-Path -Path $DestinationPath -ChildPath "$Folder.zip"
-            # add directly zip without copy-item
-            Compress-Archive -Path $SourcePath -DestinationPath $ZipPath -Force  # test
-            # Compress-Archive -Path $DestinationFolder\$Folder -DestinationPath $ZipPath -Force  # dimm zip only checked folder.
-            # Remove-Item -Path $DestinationFolder -Recurse -Force
-            # Remove-Item -Path $DestinationPath\$Folder -Recurse -Force
+            $DestinationFolder = Join-Path -Path $DestinationPath -ChildPath .
+            $ZipPath = Join-Path -Path $DestinationFolder -ChildPath "$Folder.zip"
+            Compress-Archive -Path $SourcePath\ -DestinationPath $ZipPath -Force  # dimm zip only checked folder.
+
         }
         [System.Windows.Forms.MessageBox]::Show("Backup completed.", "Backup", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
     } else {
